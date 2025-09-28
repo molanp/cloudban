@@ -1,0 +1,28 @@
+[tool.poetry]
+authors = [
+  "molanp <104612722+molanp@users.noreply.github.com>",
+]
+description = ""
+license = "GNU"
+name = "cloudban"
+package-mode = false
+version = "0.1.0"
+
+[[tool.poetry.source]]
+name = "aliyun"
+priority = "primary"
+url = "https://mirrors.aliyun.com/pypi/simple/"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.117.1"
+tortoise-orm = "^0.20.0"
+pyjwt = "^2.10.1"
+ujson = "^5.11.0"
+uvicorn = "^0.37.0"
+pydantic = "^2.0.0"
+python-multipart = "^0.0.20"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=2.0.0,<3.0.0"]
