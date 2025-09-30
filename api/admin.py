@@ -1,12 +1,8 @@
-from datetime import timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, Header, Response, status
-from fastapi.security import OAuth2PasswordRequestForm
+from datetime import timezone
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
-from config import CONFIG
 from models import AdminAction, BanRecord, BlockedHWIC
 from utils.security import (
-    authenticate_user,
-    create_access_token,
     is_login,
     require_login,
 )
@@ -22,43 +18,13 @@ class OperateRecord(BaseModel):
 router = APIRouter()
 
 
-@router.post("/login")
-async def _(
-    response: Response,
-    form_data: OAuth2PasswordRequestForm = Depends(),
-):
-    user = authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    access_token_expires = timedelta(minutes=CONFIG.ACCESS_TOKEN_EXPIRE_MINUTES)
-
-    response.set_cookie(
-        key="Authorization",
-        value=create_access_token(
-            data={"sub": user}, expires_delta=access_token_expires
-        ),
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        path="/",
-    )
-    return {"message": "登录成功"}
-
-
 @router.post("/check_token")
-@require_login
-async def _(Authorization: str = Header("")):
-    print(Authorization)
-    return {"message": "OK"}
+async def _(user=Depends(require_login)):
+    return {"user": user}
 
 
 @router.post("/approve_ban")
-@require_login
-async def approve_ban(data: OperateRecord, Authorization: str = Header("")):
+async def approve_ban(data: OperateRecord):
     record = await BanRecord.get_or_none(id=data.record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
@@ -74,8 +40,7 @@ async def approve_ban(data: OperateRecord, Authorization: str = Header("")):
 
 
 @router.post("/reject_ban")
-@require_login
-async def reject_ban(data: OperateRecord, Authorization: str = Header("")):
+async def reject_ban(data: OperateRecord):
     record = await BanRecord.get_or_none(id=data.record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
@@ -91,10 +56,7 @@ async def reject_ban(data: OperateRecord, Authorization: str = Header("")):
 
 
 @router.post("/set_hwic_block")
-@require_login
-async def set_hwic_block(
-    hwic: str, block: bool, reason: str = "", Authorization: str = Header("")
-):
+async def set_hwic_block(hwic: str, block: bool, reason: str = ""):
     if block:
         # SQLite 封禁记录（去重）
         exists = await BlockedHWIC.get_or_none(hwic=hwic)
@@ -109,8 +71,7 @@ async def set_hwic_block(
 
 
 @router.get("/list_pending")
-@require_login
-async def list_pending(Authorization: str = Header("")):
+async def list_pending():
     records = (
         await BanRecord.filter(status="pending").order_by("-update_at").limit(100).all()
     )
@@ -132,8 +93,7 @@ async def list_pending(Authorization: str = Header("")):
 
 
 @router.get("/ban_stats")
-@require_login
-async def ban_stats(Authorization: str = Header("")):
+async def ban_stats():
     total = await BanRecord.all().count()
     approved = await BanRecord.filter(status="approved").count()
     rejected = await BanRecord.filter(status="rejected").count()
@@ -148,15 +108,16 @@ async def ban_stats(Authorization: str = Header("")):
 
 
 @router.post("/modify_ban_record")
-@require_login
 async def modify_ban_record(
     record_id: int,
     reason: str = "",
-    evidence: list[str] = [],
+    evidence: list[str] | None = None,
     status: str = "",
     note: str = "",
     Authorization: str = Header(""),
 ):
+    if evidence is None:
+        evidence = []
     record = await BanRecord.get_or_none(id=record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
@@ -190,13 +151,11 @@ async def modify_ban_record(
 
 
 @router.get("/query_ban_records")
-@require_login
 async def query_ban_records(
     target_type: str = "",
     status: str = "",
     offset: int = 0,
     limit: int = 50,
-    Authorization: str = Header(""),
 ):
     q = BanRecord.all()
 
@@ -226,10 +185,7 @@ async def query_ban_records(
 
 
 @router.get("/admin_actions")
-@require_login
-async def admin_actions(
-    offset: int = 0, limit: int = 50, Authorization: str = Header("")
-):
+async def admin_actions(offset: int = 0, limit: int = 50):
     actions = await AdminAction.all().order_by("-timestamp").offset(offset).limit(limit)
     return [
         {
@@ -244,13 +200,14 @@ async def admin_actions(
 
 
 @router.get("/ban_stats_detail")
-@require_login
-async def ban_stats_detail(Authorization: str = Header("")):
+async def ban_stats_detail():
     from tortoise.functions import Count
     from datetime import datetime, timedelta
 
     # 时间趋势（过去7天）
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
     trend = []
     for i in range(7):
         day = today - timedelta(days=i)

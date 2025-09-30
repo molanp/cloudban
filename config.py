@@ -21,6 +21,14 @@ class Config(BaseModel):
     """密码"""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 300
     """token过期时间"""
+    REDIS_HOST: str = "127.0.0.1"
+    """Redis地址"""
+    REDIS_PORT: int = 6379
+    """Redis端口"""
+    REDIS_DB: int = 0
+    """Redis数据库"""
+    REDIS_PASSWORD: str = ""
+    """Redis密码"""
 
 
 try:

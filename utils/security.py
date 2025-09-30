@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta, timezone
-from functools import wraps
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Header, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from config import CONFIG
@@ -66,20 +65,10 @@ def is_login(Authorization: str):
         return False
 
 
-def require_login(func):
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        # 获取Authorization参数，可能在kwargs中或者作为第一个参数(如果是Request的话)
-        authorization = kwargs.get("Authorization", "")
-
-        user = is_login(authorization)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        return await func(*args, **kwargs)
-
-    return wrapper
+def require_login(Authorization: str = Header(...)):
+    if not Authorization:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+    if user := is_login(Authorization):
+        return user
+    else:
+        raise HTTPException(status_code=403, detail="Invalid token")
