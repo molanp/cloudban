@@ -1,99 +1,130 @@
 <!DOCTYPE html>
 <html lang="zh">
-<head>
-  <meta charset="UTF-8" />
-  <title>封禁记录公开查询</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
-    input, select, button { margin: 5px 0; padding: 8px; width: 100%; }
-    .record { border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
-    img { max-width: 100%; margin-top: 5px; }
-    .pagination { margin-top: 20px; text-align: center; }
-    .pagination button { margin: 0 5px; padding: 5px 10px; }
-  </style>
-</head>
-<body>
-  <h2>封禁记录公开查询</h2>
+  <head>
+    <meta charset="UTF-8" />
+    <title>封禁记录公开查询</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+        max-width: 800px;
+        margin: auto;
+      }
+      input,
+      select,
+      button {
+        margin: 5px 0;
+        padding: 8px;
+        width: 100%;
+      }
+      .record {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-top: 10px;
+      }
+      img {
+        max-width: 100%;
+        margin-top: 5px;
+      }
+      .pagination {
+        margin-top: 20px;
+        text-align: center;
+      }
+      .pagination button {
+        margin: 0 5px;
+        padding: 5px 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>封禁记录公开查询</h2>
 
-  <select id="type">
-    <option value="qq">QQ</option>
-    <option value="group">群</option>
-  </select>
-  <input id="id" placeholder="请输入 QQ 或群号" />
-  <button onclick="query()">查询指定</button>
+    <select id="type">
+      <option value="qq">QQ</option>
+      <option value="group">群</option>
+    </select>
+    <input id="id" placeholder="请输入 QQ 或群号" />
+    <button onclick="query()">查询指定</button>
 
-  <div id="result">正在加载记录...</div>
-  <div class="pagination" id="pagination"></div>
+    <div id="result">正在加载记录...</div>
+    <div class="pagination" id="pagination"></div>
 
-  <script>
-    let currentPage = 1
-    const pageSize = 10
-    let totalPages = 1
-    let isQueryMode = false
+    <script>
+      let currentPage = 1;
+      const pageSize = 10;
+      let totalPages = 1;
+      let isQueryMode = false;
+      const host = "http://127.0.0.1:8080";
 
-    async function loadDefault(page = 1) {
-      isQueryMode = false
-      const res = await fetch(`/api/public_banlist?page=${page}&page_size=${pageSize}`)
-      const data = await res.json()
-      renderRecords(data.records || [])
-      totalPages = Math.ceil(data.total / pageSize)
-      currentPage = page
-      renderPagination()
-    }
-
-    async function query(page = 1) {
-      const type = document.getElementById("type").value
-      const id = document.getElementById("id").value
-      if (!id) return
-
-      isQueryMode = true
-      const res = await fetch(`/api/banlist?target_type=${type}&target_id=${id}`)
-      const data = await res.json()
-
-      if (!data.banned) {
-        document.getElementById("result").innerHTML = "<p>未发现封禁记录</p>"
-        document.getElementById("pagination").innerHTML = ""
-        return
+      async function loadDefault(page = 1) {
+        isQueryMode = false;
+        const res = await fetch(
+          `${host}/api/public_banlist?page=${page}&page_size=${pageSize}`
+        );
+        const data = await res.json();
+        renderRecords(data.records || []);
+        totalPages = Math.ceil(data.total / pageSize);
+        currentPage = page;
+        renderPagination();
       }
 
-      renderRecords(data.records)
-      totalPages = 1
-      currentPage = 1
-      renderPagination()
-    }
+      async function query(page = 1) {
+        const type = document.getElementById("type").value;
+        const id = document.getElementById("id").value;
+        if (!id) return;
 
-    function renderRecords(records) {
-      const box = document.getElementById("result")
-      box.innerHTML = ""
+        isQueryMode = true;
+        const res = await fetch(
+          `${host}/api/banlist?target_type=${type}&target_id=${id}`
+        );
+        const data = await res.json();
 
-      records.forEach(r => {
-        const div = document.createElement("div")
-        div.className = "record"
-        div.innerHTML = `
+        if (!data.banned) {
+          document.getElementById("result").innerHTML = "<p>未发现封禁记录</p>";
+          document.getElementById("pagination").innerHTML = "";
+          return;
+        }
+
+        renderRecords(data.records);
+        totalPages = 1;
+        currentPage = 1;
+        renderPagination();
+      }
+
+      function renderRecords(records) {
+        const box = document.getElementById("result");
+        box.innerHTML = "";
+
+        records.forEach((r) => {
+          const div = document.createElement("div");
+          div.className = "record";
+          div.innerHTML = `
           <p><strong>时间：</strong>${r.update_at}</p>
-          <p><strong>类型：</strong>${r.target_type || '未知'}</p>
-          <p><strong>目标：</strong>${r.target_id || '未知'}</p>
+          <p><strong>类型：</strong>${r.target_type || "未知"}</p>
+          <p><strong>目标：</strong>${r.target_id || "未知"}</p>
           <p><strong>理由：</strong>${r.reason}</p>
-          ${r.evidence.map(e => `<img src="data:image/jpeg;base64,${e}" />`).join("")}
-        `
-        box.appendChild(div)
-      })
-    }
-
-    function renderPagination() {
-      const p = document.getElementById("pagination")
-      p.innerHTML = ""
-
-      for (let i = 1; i <= totalPages; i++) {
-        const btn = document.createElement("button")
-        btn.textContent = i
-        btn.disabled = i === currentPage
-        btn.onclick = () => isQueryMode ? query(i) : loadDefault(i)
-        p.appendChild(btn)
+          ${r.evidence
+            .map((e) => `<img src="data:image/jpeg;base64,${e}" />`)
+            .join("")}
+        `;
+          box.appendChild(div);
+        });
       }
-    }
 
-    loadDefault()
-  </script>
-</body>
+      function renderPagination() {
+        const p = document.getElementById("pagination");
+        p.innerHTML = "";
+
+        for (let i = 1; i <= totalPages; i++) {
+          const btn = document.createElement("button");
+          btn.textContent = i;
+          btn.disabled = i === currentPage;
+          btn.onclick = () => (isQueryMode ? query(i) : loadDefault(i));
+          p.appendChild(btn);
+        }
+      }
+
+      loadDefault();
+    </script>
+  </body>
 </html>

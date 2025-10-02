@@ -8,6 +8,7 @@ from tortoise import Tortoise
 from config import CONFIG
 from starlette.types import ASGIApp, Scope, Receive, Send
 from fastapi.logger import logger
+from fastapi.middleware.cors import CORSMiddleware
 
 from utils.security import authenticate_user, create_access_token, require_login
 
@@ -50,6 +51,13 @@ else:
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 
 app.add_middleware(AuthMiddleware)  # 认证中间件
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # 注册路由
 app.include_router(
     report.router,
@@ -61,12 +69,12 @@ app.include_router(
     prefix="/api",
     tags=["查询接口"],
 )
-app.include_router(
-    admin.router,
-    prefix="/api/admin",
-    tags=["后台接口"],
-    dependencies=[Depends(require_login)],
-)
+# app.include_router(
+#     admin.router,
+#     prefix="/api/admin",
+#     tags=["后台接口"],
+#     dependencies=[Depends(require_login)],
+# )
 
 
 @app.post("/login")

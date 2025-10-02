@@ -8,7 +8,7 @@ async def query_ban(
     target_type: str = Query(..., regex="^(qq|group)$"),
     target_id: str = Query(..., min_length=5, max_length=20)
 ):
-    records = await BanRecord.filter(
+    records = await BanRecord.filter_cached(
         target_type=target_type,
         target_id=target_id,
         status="approved"
