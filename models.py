@@ -5,7 +5,7 @@ import ujson
 
 
 class CachedModel(Model):
-    class Meta:
+    class Meta: # pyright: ignore[reportIncompatibleVariableOverride]
         abstract = True
 
     @classmethod
